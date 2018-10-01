@@ -1,0 +1,49 @@
+---
+- hosts: avi-controller
+  connection: local
+  gather_facts: False
+  vars:
+    vs_network: "192.168.2.0"
+    vs_mask: "24"
+    domain_name: "example.com"
+  tasks:
+  - name: Create server pool in Avi
+    avi_pool:
+      controller: "{{ inventory_hostname }}"
+      username: "{{ avi_username }}"
+      password: "{{ avi_password }}"
+      name: "{{ app_name }}.{{ domain_name }}_pool"
+      default_server_port: "{{ app_port }}"
+
+  - name: Add servers to Avi pool
+    avi_pool:
+      controller: "{{ inventory_hostname }}"
+      username: "{{ avi_username }}"
+      password: "{{ avi_password }}"
+      avi_api_update_method: patch
+      avi_api_patch_op: add
+      name: "{{ app_name }}.{{ domain_name }}_pool"
+      servers:
+        - ip:
+            addr: "{{ lookup('dig', item)}}"
+            type: 'V4'
+    with_items: "{{ groups['webservers'] }}"
+
+  - name: Create Virtual Service
+    avi_virtualservice:
+      controller: "{{ inventory_hostname }}"
+      username: "{{ avi_username }}"
+      password: "{{ avi_password }}"
+      name: "{{ app_name }}.{{ domain_name }}_vs"
+      services:
+          - port: 80
+      ipam_network_subnet:
+        network_ref: "infoblox--default--{{ vs_network }}-{{ vs_mask }}"
+        subnet:
+          ip_addr:
+            addr: "{{ vs_network }}"
+            type: V4
+          mask: "{{ vs_mask }}"
+      dns_info:
+          - fqdn: "{{ app_name }}.{{ domain_name }}"
+      pool_ref: '/api/pool?name={{ app_name }}.{{ domain_name }}_pool'
