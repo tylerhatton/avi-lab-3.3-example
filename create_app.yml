@@ -1,5 +1,5 @@
 ---
-- hosts: avi-controller
+- hosts: avi-controllers
   connection: local
   gather_facts: False
   vars:
@@ -35,6 +35,7 @@
       username: "{{ avi_username }}"
       password: "{{ avi_password }}"
       name: "{{ app_name }}.{{ domain_name }}_vs"
+      auto_allocate_ip: yes
       services:
           - port: 80
       ipam_network_subnet:
